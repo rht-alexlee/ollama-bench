@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama-llama-8b
+  namespace: ollama-inference
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama-llama-1.5b
+  template:
+    metadata:
+      labels:
+        app: ollama-llama-1.5b
+    spec:
+      serviceAccountName: ollama-sa
+      containers:
+      - name: ollama
+        image: ollama/ollama:latest
+        ports:
+        - containerPort: 11434
+        volumeMounts:
+        - name: ollama-models
+          mountPath: /root/.ollama
+      volumes:
+      - name: ollama-models
+        persistentVolumeClaim:
+          claimName: ollama-models-pvc
+
