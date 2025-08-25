@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: guidellm-ollama-job
+  namespace: ollama-inference
+spec:
+  template:
+    spec:
+      containers:
+      - name: guidellm
+        image: ghcr.io/neuralmagic/guidellm:3864b31999f8e2972cf0474679c10c8092959153
+        env:
+          - name: HUGGING_FACE_HUB_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: huggingface-secret 
+                key: hf_token           
+          - name: HF_HOME
+            value: /tmp/huggingface_cache
+        command: ["guidellm"]
+        args:
+          - "benchmark"
+          - "--target"
+          - "http://ollama-service.ollama-inference.svc.cluster.local:11434"
+          - "--model"
+          - "llama3.1:8b-instruct-fp16" 
+          - "--processor"
+          - "meta-llama/Llama-3.1-8B-Instruct"
+          - "--data"
+          - "/data/dataset.json"
+          - "--data-args"
+          - '{"field": "data", "prompt_column": "prompt", "output_tokens_count_column": "output_tokens_count", "prompt_tokens_count_column": "prompt_tokens_count"}'
+          - "--rate-type"
+          - "concurrent"
+          - "--max-seconds"
+          - "300"
+          - "--rate"
+          - "1,2,4,8,16,32,64,128,256"     #use a single rate for shorter runtimes
+          - "--output-path"
+          - "/results/ollama-output.json"
+        volumeMounts:
+        - name: results-volume
+          mountPath: /results
+      volumes:
+      - name: results-volume
+        persistentVolumeClaim:
+          claimName: guidellm-ollama-results-pvc
+      restartPolicy: Never
+  backoffLimit: 1
+
